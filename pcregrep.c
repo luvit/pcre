@@ -1692,9 +1692,13 @@ while (ptr < endptr)
 
     if (filenames == FN_NOMATCH_ONLY) return 1;
 
+    /* If all we want is a yes/no answer, stop now. */
+
+    if (quiet) return 0;
+
     /* Just count if just counting is wanted. */
 
-    if (count_only) count++;
+    else if (count_only) count++;
 
     /* When handling a binary file and binary-files==binary, the "binary"
     variable will be set true (it's false in all other cases). In this
@@ -1714,10 +1718,6 @@ while (ptr < endptr)
       fprintf(stdout, "%s\n", printname);
       return 0;
       }
-
-    /* Likewise, if all we want is a yes/no answer. */
-
-    else if (quiet) return 0;
 
     /* The --only-matching option prints just the substring that matched,
     and/or one or more captured portions of it, as long as these strings are
@@ -1803,6 +1803,12 @@ while (ptr < endptr)
         match = FALSE;
         if (line_buffered) fflush(stdout);
         rc = 0;                      /* Had some success */
+
+        /* If the current match ended past the end of the line (only possible
+        in multiline mode), we are done with this line. */
+
+        if ((unsigned int)offsets[1] > linelength) goto END_ONE_MATCH;
+
         startoffset = offsets[1];    /* Restart after the match */
         if (startoffset <= oldstartoffset)
           {
@@ -2089,7 +2095,7 @@ if (filenames == FN_NOMATCH_ONLY)
 
 /* Print the match count if wanted */
 
-if (count_only)
+if (count_only && !quiet)
   {
   if (count > 0 || !omit_zero_count)
     {
@@ -2437,7 +2443,7 @@ return options;
 static char *
 ordin(int n)
 {
-static char buffer[8];
+static char buffer[14];
 char *p = buffer;
 sprintf(p, "%d", n);
 while (*p != 0) p++;
