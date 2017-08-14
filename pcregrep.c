@@ -1692,9 +1692,13 @@ while (ptr < endptr)
 
     if (filenames == FN_NOMATCH_ONLY) return 1;
 
+    /* If all we want is a yes/no answer, stop now. */
+
+    if (quiet) return 0;
+
     /* Just count if just counting is wanted. */
 
-    if (count_only) count++;
+    else if (count_only) count++;
 
     /* When handling a binary file and binary-files==binary, the "binary"
     variable will be set true (it's false in all other cases). In this
@@ -1714,10 +1718,6 @@ while (ptr < endptr)
       fprintf(stdout, "%s\n", printname);
       return 0;
       }
-
-    /* Likewise, if all we want is a yes/no answer. */
-
-    else if (quiet) return 0;
 
     /* The --only-matching option prints just the substring that matched,
     and/or one or more captured portions of it, as long as these strings are
@@ -1803,6 +1803,7 @@ while (ptr < endptr)
         match = FALSE;
         if (line_buffered) fflush(stdout);
         rc = 0;                      /* Had some success */
+
         startoffset = offsets[1];    /* Restart after the match */
         if (startoffset <= oldstartoffset)
           {
@@ -1812,6 +1813,22 @@ while (ptr < endptr)
           if (utf8)
             while ((matchptr[startoffset] & 0xc0) == 0x80) startoffset++;
           }
+
+        /* If the current match ended past the end of the line (only possible
+        in multiline mode), we must move on to the line in which it did end
+        before searching for more matches. */
+
+        while (startoffset > (int)linelength)
+          {
+          matchptr = ptr += linelength + endlinelength;
+          filepos += (int)(linelength + endlinelength);
+          linenumber++;
+          startoffset -= (int)(linelength + endlinelength);
+          t = end_of_line(ptr, endptr, &endlinelength);
+          linelength = t - ptr - endlinelength;
+          length = (size_t)(endptr - ptr);
+          }
+
         goto ONLY_MATCHING_RESTART;
         }
       }
@@ -2089,7 +2106,7 @@ if (filenames == FN_NOMATCH_ONLY)
 
 /* Print the match count if wanted */
 
-if (count_only)
+if (count_only && !quiet)
   {
   if (count > 0 || !omit_zero_count)
     {
@@ -2437,7 +2454,7 @@ return options;
 static char *
 ordin(int n)
 {
-static char buffer[8];
+static char buffer[14];
 char *p = buffer;
 sprintf(p, "%d", n);
 while (*p != 0) p++;
@@ -3173,9 +3190,11 @@ for (j = 1, cp = patterns; cp != NULL; j++, cp = cp->next)
   cp->hint = pcre_study(cp->compiled, study_options, &error);
   if (error != NULL)
     {
-    char s[16];
-    if (patterns->next == NULL) s[0] = 0; else sprintf(s, " number %d", j);
-    fprintf(stderr, "pcregrep: Error while studying regex%s: %s\n", s, error);
+    if (patterns->next == NULL)
+      fprintf(stderr, "pcregrep: Error while studying regex: %s\n", error);
+    else
+      fprintf(stderr, "pcregrep: Error while studying regex number %d: %s\n",
+        j, error);
     goto EXIT2;
     }
 #ifdef SUPPORT_PCREGREP_JIT

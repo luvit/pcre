@@ -669,7 +669,7 @@ if (ecode == NULL)
     return match((PCRE_PUCHAR)&rdepth, NULL, NULL, 0, NULL, NULL, 1);
   else
     {
-    int len = (char *)&rdepth - (char *)eptr;
+    int len = (int)((char *)&rdepth - (char *)eptr);
     return (len > 0)? -len : len;
     }
   }
@@ -6685,7 +6685,8 @@ if (md->offset_vector != NULL)
   register int *iend = iptr - re->top_bracket;
   if (iend < md->offset_vector + 2) iend = md->offset_vector + 2;
   while (--iptr >= iend) *iptr = -1;
-  md->offset_vector[0] = md->offset_vector[1] = -1;
+  if (offsetcount > 0) md->offset_vector[0] = -1;
+  if (offsetcount > 1) md->offset_vector[1] = -1;
   }
 
 /* Set up the first character to match, if available. The first_char value is
